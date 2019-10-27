@@ -135,7 +135,8 @@ simds = [
     'avx512_skylake',
     'neon128',
     'aarch64',
-    'sve'
+    'sve',
+    'vsx'
 ]
 
 x86_simds = [
