@@ -318,6 +318,12 @@ SOFTWARE.
   #include <arm_neon.h>
   #include <arm_sve.h>
 
+#elif defined(NSIMD_VSX)
+
+  #define NSIMD_PLATFORM ppc
+  #define NSIMD_SIMD vsx
+  #include <altivec.h>
+
 #else
 
   #define NSIMD_SIMD cpu
