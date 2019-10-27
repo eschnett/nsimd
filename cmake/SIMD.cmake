@@ -31,7 +31,7 @@ function(get_simd_infos out simd simd_optional)
         NEON64 NEON128
         AARCH64
         SVE
-        VSX
+        VMX VSX
     )
     set(simd_optionals
         FMA FP16
@@ -74,7 +74,8 @@ function(get_simd_infos out simd simd_optional)
     set(list_for_aarch64        "${list_for_cpu};AARCH64")
     set(list_for_sve            "${list_for_aarch64};SVE")
     
-    set(list_for_vsx            "${list_for_cpu};VSX")
+    set(list_for_vmx            "${list_for_cpu};VMX")
+    set(list_for_vsx            "${list_for_vmx};VSX")
 
     set(${out}_LIST "${list_for_${hatch_flag}}" PARENT_SCOPE)
 

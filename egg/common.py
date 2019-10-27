@@ -136,6 +136,7 @@ simds = [
     'neon128',
     'aarch64',
     'sve',
+    'vmx',
     'vsx'
 ]
 
@@ -951,6 +952,7 @@ def sleef_name(name, simd, typ, ulp=None):
         'neon128': types_128,
         'aarch64': types_128,
         'sve': types_unknown,
+        'vmx': types_128,
         'vsx': types_128,
     })[simd][typ]
     ## 4. (We cannot really guess that...
