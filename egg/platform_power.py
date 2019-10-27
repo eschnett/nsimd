@@ -110,14 +110,21 @@ def cvt1(simd_ext, from_typ, to_typ):
         if to_typ == 'f32':
             # return 'return vec_ctf({in0}, 0);'.format(**fmtspec)
             return 'return vec_float({in0});'.format(**fmtspec)
+        if to_typ == 'f16':
+            return 'abort();'   # TODO
         if to_typ == 'i64':
             return 'return vec_ctsl({in0}, 0);'.format(**fmtspec)
         if to_typ == 'i32':
             return 'return vec_cts({in0}, 0);'.format(**fmtspec)
+        if to_typ == 'i16':
+            return 'abort();'   # TODO
         if to_typ == 'u64':
             return 'return vec_ctul({in0}, 0);'.format(**fmtspec)
         if to_typ == 'u32':
             return 'return vec_ctu({in0}, 0);'.format(**fmtspec)
+        if to_typ == 'u16':
+            return 'abort();'   # TODO
+        print("cvt1.ft", from_typ, to_typ)
         assert False
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
@@ -127,9 +134,14 @@ def downcvt1(simd_ext, from_typ, to_typ):
         to_nbits = int(to_typ[1:])
         assert from_nbits == 2 * to_nbits
         if to_typ == 'f32':
-            return 'return vec_float2({in0}, {in1});'.format(simd_ext)
-        if to_typ[0] != 'f' and from_type[0] != 'f':
-            return 'return vec_pack({in0}, {In1});'.format(simd_ext)
+            return 'return vec_float2({in0}, {in1});'.format(**fmtspec)
+        if to_typ == 'f16':
+            return 'abort();'   # TODO
+        if to_typ[0] != 'f' and from_typ[0] != 'f':
+            return 'return vec_pack({in0}, {in1});'.format(**fmtspec)
+        if to_typ[0] != 'f':
+            return 'abort();'   # TODO
+        print("downcvt1.ft", from_typ, to_typ)
         assert False
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
@@ -164,8 +176,7 @@ def reinterpret1(simd_ext, from_typ, to_typ):
         return '''__vector {from_typ} x = {in0};
                   __vector {to_typ} r;
                   memcpy(&r, &x, sizeof {to_typ});
-                  return r;'''.\
-               format(from_typ=from_typ, to_typ=to_typ, **fmtspec)
+                  return r;'''.format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def set1(simd_ext, typ):
@@ -183,11 +194,18 @@ def upcvt1(simd_ext, from_typ, to_typ):
                       r.v0 = vec_doublel({in0});
                       r.v1 = vec_doubleh({in0});
                       return r;'''.format(**fmtspec)
-        if to_typ[0] != 'f' and from_type[0] != 'f':
-            r = '''nsimd_vsx_v{to_typ}x2 r;
-                   r.v0 = vec_unpacklo({in0};
-                   r.v1 = vec_unpackhi({in0};
-                   return r;'''.format(**fmtspec)
+        if to_typ == 'f32':
+            return 'abort();'   # TODO
+        if to_typ == 'f16':
+            return 'abort();'   # TODO
+        if to_typ[0] != 'f' and from_typ[0] != 'f':
+            return '''nsimd_vsx_v{to_typ}x2 r;
+                      r.v0 = vec_unpacklo({in0};
+                      r.v1 = vec_unpackhi({in0};
+                      return r;'''.format(**fmtspec)
+        if to_typ in ['i64', 'u64', 'i32', 'u32', 'i16', 'u16']:
+            return 'abort();'   # TODO
+        print("upcvt1.ft", from_typ, to_typ)
         assert False
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
@@ -237,7 +255,6 @@ def get_impl(func, simd_ext, from_typ, to_typ):
       'styp': get_type(simd_ext, from_typ),
       'from_typ': from_typ,
       'to_typ': to_typ,
-      'suf': suf(from_typ),
       'in0': common.in0,
       'in1': common.in1,
       'in2': common.in2,
@@ -249,65 +266,65 @@ def get_impl(func, simd_ext, from_typ, to_typ):
     }
 
     impls = {
-        'abs': op1('abs', simd_ext, from_typ),
-        'add': op2('add', simd_ext, from_typ),
-        'addv': addv1(simd_ext, from_typ),
-        'all': op1('all_ne', simd_ext, from_typ),
-        'andb': op2('and', simd_ext, from_typ),
-        'andl': op2('and', simd_ext, from_typ),
-        'andnotb': op2('andc', simd_ext, from_typ),
-        'andnotl': op2('andc', simd_ext, from_typ),
-        'any': op1('any_ne', simd_ext, from_typ),
-        'ceil': op1('ceil', simd_ext, from_typ),
-        'div': op2('div', simd_ext, from_typ),
-        'eq': op2('cmpeq', simd_ext, from_typ),
-        'floor': op1('floor', simd_ext, from_typ),
-        'fma': op3('madd', simd_ext, from_typ),
-        'fms': op3('msub', simd_ext, from_typ),
-        'fnma': op3('nmadd', simd_ext, from_typ),
-        'fnms': op3('nmsub', simd_ext, from_typ),
-        'ge': op2('cmpge', simd_ext, from_typ),
-        'gt': op2('cmpgt', simd_ext, from_typ),
-        'if_else1': if_else3(simd_ext, from_typ),
-        'le': op2('cmple', simd_ext, from_typ),
-        'len': len0(simd_ext, from_typ),
-        'lt': op2('cmplt', simd_ext, from_typ),
-        'max': op2('max', simd_ext, from_typ),
-        'min': op2('min', simd_ext, from_typ),
-        'mul': op2('mul', simd_ext, from_typ),
-        'ne': op2('cmpne', simd_ext, from_typ),
-        'neg': op1('neg', simd_ext, from_typ),
-        'notb': not1(simd_ext, from_typ),
-        'notl': not1(simd_ext, from_typ),
-        'orb': op2('or', simd_ext, from_typ),
-        'orl': op2('or', simd_ext, from_typ),
-        'rec': rec1(simd_ext, from_typ),
-        'rec11': op1('re', simd_ext, from_typ),
-        'round': op1('round', simd_ext, from_typ),
-        'rsqrt11': op1('rsqrte', simd_ext, from_typ),
-        'set1': set1(simd_ext, from_typ),
-        'shl': op2('sl', simd_ext, from_typ),
-        'shr': op2('sr', simd_ext, from_typ), # logical shift
-        'sqrt': op1('sqrt', simd_ext, from_typ),
-        'sub': op2('sub', simd_ext, from_typ),
-        'trunc': op1('trunc', simd_ext, from_typ),
-        'xorb': op2('xor', simd_ext, from_typ),
-        'xorl': op2('xor', simd_ext, from_typ),
-        'nbtrue': op1('popcnt', simd_ext, from_typ),
-        'reverse': op1('reve', simd_ext, from_typ),
-        'reinterpret': reinterpret1(simd_ext, from_typ, to_typ),
-        'reinterpretl': reinterpret1(simd_ext, from_typ, to_typ),
-        'cvt': cvt1(simd_ext, from_typ, to_typ),
-        'upcvt': upcvt1(simd_ext, from_typ, to_typ),
-        'downcvt': downcvt1(simd_ext, from_typ, to_typ),
-        'loada': load(simd_ext, from_typ),
-        'loadu': load(simd_ext, from_typ),
-        'loadla': load(simd_ext, from_typ),
-        'loadlu': load(simd_ext, from_typ),
-        'storea': store(simd_ext, from_typ),
-        'storeu': store(simd_ext, from_typ),
-        'storela': store(simd_ext, from_typ),
-        'storelu': store(simd_ext, from_typ),
+        'abs': lambda: op1('abs', simd_ext, from_typ),
+        'add': lambda: op2('add', simd_ext, from_typ),
+        'addv': lambda: addv1(simd_ext, from_typ),
+        'all': lambda: op1('all_ne', simd_ext, from_typ),
+        'andb': lambda: op2('and', simd_ext, from_typ),
+        'andl': lambda: op2('and', simd_ext, from_typ),
+        'andnotb': lambda: op2('andc', simd_ext, from_typ),
+        'andnotl': lambda: op2('andc', simd_ext, from_typ),
+        'any': lambda: op1('any_ne', simd_ext, from_typ),
+        'ceil': lambda: op1('ceil', simd_ext, from_typ),
+        'div': lambda: op2('div', simd_ext, from_typ),
+        'eq': lambda: op2('cmpeq', simd_ext, from_typ),
+        'floor': lambda: op1('floor', simd_ext, from_typ),
+        'fma': lambda: op3('madd', simd_ext, from_typ),
+        'fms': lambda: op3('msub', simd_ext, from_typ),
+        'fnma': lambda: op3('nmadd', simd_ext, from_typ),
+        'fnms': lambda: op3('nmsub', simd_ext, from_typ),
+        'ge': lambda: op2('cmpge', simd_ext, from_typ),
+        'gt': lambda: op2('cmpgt', simd_ext, from_typ),
+        'if_else1': lambda: if_else3(simd_ext, from_typ),
+        'le': lambda: op2('cmple', simd_ext, from_typ),
+        'len': lambda: len0(simd_ext, from_typ),
+        'lt': lambda: op2('cmplt', simd_ext, from_typ),
+        'max': lambda: op2('max', simd_ext, from_typ),
+        'min': lambda: op2('min', simd_ext, from_typ),
+        'mul': lambda: op2('mul', simd_ext, from_typ),
+        'ne': lambda: op2('cmpne', simd_ext, from_typ),
+        'neg': lambda: op1('neg', simd_ext, from_typ),
+        'notb': lambda: not1(simd_ext, from_typ),
+        'notl': lambda: not1(simd_ext, from_typ),
+        'orb': lambda: op2('or', simd_ext, from_typ),
+        'orl': lambda: op2('or', simd_ext, from_typ),
+        'rec': lambda: rec1(simd_ext, from_typ),
+        'rec11': lambda: op1('re', simd_ext, from_typ),
+        'round': lambda: op1('round', simd_ext, from_typ),
+        'rsqrt11': lambda: op1('rsqrte', simd_ext, from_typ),
+        'set1': lambda: set1(simd_ext, from_typ),
+        'shl': lambda: op2('sl', simd_ext, from_typ),
+        'shr': lambda: op2('sr', simd_ext, from_typ), # logical shift
+        'sqrt': lambda: op1('sqrt', simd_ext, from_typ),
+        'sub': lambda: op2('sub', simd_ext, from_typ),
+        'trunc': lambda: op1('trunc', simd_ext, from_typ),
+        'xorb': lambda: op2('xor', simd_ext, from_typ),
+        'xorl': lambda: op2('xor', simd_ext, from_typ),
+        'nbtrue': lambda: op1('popcnt', simd_ext, from_typ),
+        'reverse': lambda: op1('reve', simd_ext, from_typ),
+        'reinterpret': lambda: reinterpret1(simd_ext, from_typ, to_typ),
+        'reinterpretl': lambda: reinterpret1(simd_ext, from_typ, to_typ),
+        'cvt': lambda: cvt1(simd_ext, from_typ, to_typ),
+        'upcvt': lambda: upcvt1(simd_ext, from_typ, to_typ),
+        'downcvt': lambda: downcvt1(simd_ext, from_typ, to_typ),
+        'loada': lambda: load(simd_ext, from_typ),
+        'loadu': lambda: load(simd_ext, from_typ),
+        'loadla': lambda: load(simd_ext, from_typ),
+        'loadlu': lambda: load(simd_ext, from_typ),
+        'storea': lambda: store(simd_ext, from_typ),
+        'storeu': lambda: store(simd_ext, from_typ),
+        'storela': lambda: store(simd_ext, from_typ),
+        'storelu': lambda: store(simd_ext, from_typ),
 
         # TODO
         # 'load2a': load1234(simd_ext, from_typ, 2),
@@ -335,4 +352,4 @@ def get_impl(func, simd_ext, from_typ, to_typ):
         raise ValueError('Unknown type "{}"'.format(from_typ))
     if func not in impls:
         return common.NOT_IMPLEMENTED
-    return impls[func]
+    return impls[func]()

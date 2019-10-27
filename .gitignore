@@ -8,6 +8,7 @@ build
 src/api_*.cpp
 include/nsimd/arm
 include/nsimd/x86
+include/nsimd/power
 include/nsimd/cpu
 include/nsimd/functions.h
 include/nsimd/cxx_adv_api_functions.hpp
