@@ -155,6 +155,11 @@ arm_simds = [
     'sve'
 ]
 
+power_simds = [
+    # 'altivec',
+    'vsx'
+]
+
 simds_deps = {
     'cpu': ['cpu'],
     'sse2': ['cpu', 'sse2'],
@@ -167,6 +172,7 @@ simds_deps = {
     'neon128': ['cpu', 'neon128'],
     'aarch64': ['cpu', 'aarch64'],
     'sve': ['cpu', 'aarch64', 'sve'],
+    'vsx': ['cpu', 'vsx'],
 }
 
 ftypes = ['f64', 'f32', 'f16']
@@ -943,6 +949,7 @@ def sleef_name(name, simd, typ, ulp=None):
         'neon128': types_128,
         'aarch64': types_128,
         'sve': types_unknown,
+        'vsx': types_128,
     })[simd][typ]
     ## 4. (We cannot really guess that...
     ##     Instead you have to add bench manually)
