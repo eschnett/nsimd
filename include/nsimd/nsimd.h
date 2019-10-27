@@ -65,6 +65,8 @@ SOFTWARE.
       defined(__TARGET_ARCH_ARM) || defined(__TARGET_ARCH_THUMB) || \
       defined(_M_ARM) || defined(_M_ARM64) || defined(__arch64__)
   #define NSIMD_ARM
+#elif defined(__powerpc__) || defined(__powerpc64__)
+  #define NSIMD_PPC
 #else
   #define NSIMD_CPU
 #endif
@@ -323,12 +325,18 @@ SOFTWARE.
   #define NSIMD_PLATFORM ppc
   #define NSIMD_SIMD vmx
   #include <altivec.h>
+  #undef bool
+  #undef pixel
+  #undef vector
 
 #elif defined(NSIMD_VSX)
 
   #define NSIMD_PLATFORM ppc
   #define NSIMD_SIMD vsx
   #include <altivec.h>
+  #undef bool
+  #undef pixel
+  #undef vector
 
 #else
 
