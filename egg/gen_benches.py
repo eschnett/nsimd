@@ -65,7 +65,7 @@ def asm_marker(simd, bench_name):
     elif simd in common.arm_simds:
         r += '__asm__ __volatile__("bl __asm_marker__{bench_name}");'. \
                format(bench_name=bench_name)
-    elif simd in common.power_simds:
+    elif simd in common.ppc_simds:
         r += '__asm__ __volatile__("bl __asm_marker__{bench_name}");'. \
                format(bench_name=bench_name)
     else:

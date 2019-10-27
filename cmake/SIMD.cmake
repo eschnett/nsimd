@@ -96,7 +96,7 @@ function(get_simd_infos out simd simd_optional)
             set(${out}_PLATFORM "x86_64" PARENT_SCOPE)
         endif()
     elseif ("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "ppc64le")
-        set(${out}_PLATFORM "power" PARENT_SCOPE)
+        set(${out}_PLATFORM "ppc" PARENT_SCOPE)
     else()
         message(FATAL_ERROR
                 "Unsupported platform: '${CMAKE_SYSTEM_PROCESSOR}'")

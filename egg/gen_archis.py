@@ -201,6 +201,7 @@ def gen_archis_types(opts, simd_dir, platform, simd_ext):
     c_code += '\n'.join(['typedef {} nsimd_{}_vl{};'.format(
               mod.get_logical_type(simd_ext, t), simd_ext, t)
               for t in common.types])
+    c_code += '\n\n'
     if mod.has_compatible_SoA_types(simd_ext):
         for deg in range(2, 5):
             c_code += '\n'.join(['typedef {} nsimd_{}_v{}x{};'. \

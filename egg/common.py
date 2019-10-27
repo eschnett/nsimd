@@ -156,8 +156,8 @@ arm_simds = [
     'sve'
 ]
 
-power_simds = [
-    # 'altivec',
+ppc_simds = [
+    'vmx',
     'vsx'
 ]
 
@@ -173,7 +173,8 @@ simds_deps = {
     'neon128': ['cpu', 'neon128'],
     'aarch64': ['cpu', 'aarch64'],
     'sve': ['cpu', 'aarch64', 'sve'],
-    'vsx': ['cpu', 'vsx'],
+    'vmx': ['cpu', 'vmx'],
+    'vsx': ['cpu', 'vmx', 'vsx'],
 }
 
 ftypes = ['f64', 'f32', 'f16']
