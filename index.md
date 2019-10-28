@@ -65,6 +65,9 @@ Here is a list of supported platforms and their corresponding SIMD extensions.
   - `neon128`
   - `aarch64`
   - `sve`
+- Platform `ppc`
+  - `vmx`
+  - `vsx`
 
 Each simd extension has its own set of SIMD types and functions. Types follow
 the following pattern: `nsimd_SIMDEXT_vSCALAR` where

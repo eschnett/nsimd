@@ -214,7 +214,7 @@ def main():
 
     ## Gather all SIMD dependencies
     opts.simd = common.get_simds_deps_from_opts(opts)
-    print('-- List of SIMD: {}'.format(', '.join(opts.simd)))
+    print('-- List of SIMD: {}'.format(', '.join(sorted(list(opts.simd)))))
     if opts.archis == True or opts.all == True:
         gen_archis.doit(opts)
     if opts.base_apis == True or opts.all == True:

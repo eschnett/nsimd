@@ -20,10 +20,10 @@
 
 # This file gives the implementation of platform POWER, i.e. Power SIMD.
 # This file implements the following architectures:
-#   - Altivec -> not yet implemented
-#   - VSX     -> 128 bits registers
+#   - VMX -> 128 bits registers
+#   - VSX -> 128 bits registers
 #
-# VSX also supports 128-bit integer and floating point type (i128, u128, f128),
+# VSX also supports 128-bit integer and floating point types (i128, u128, f128),
 # but these are not yet made available here.
 #
 # Relevant documentation:
@@ -49,7 +49,6 @@ def emulate_fp16(simd_ext):
 
 def get_type(simd_ext, typ):
     if simd_ext in vmx:
-        # The vector syntax requires changes to the compiler parser
         return '__vector {typ}'.format(typ=typ)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
@@ -79,11 +78,11 @@ def has_compatible_SoA_types(simd_ext):
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def get_additional_include(func, platform, simd_ext):
-    ret = ''
+    ret = '#include <string.h>\n'
     if simd_ext in vmx:
-        ret += '''#include <string.h>
-                  #include <nsimd/cpu/cpu/{}.h>
-                  '''.format(func)
+        ret += '#include <nsimd/cpu/cpu/{}.h>\n'.format(func)
+    if simd_ext in vsx:
+        ret += '#include <nsimd/ppc/vmx/{}.h>\n'.format(func)
     return ret
 
 # -----------------------------------------------------------------------------
@@ -166,12 +165,12 @@ def downcvt1(simd_ext, from_typ, to_typ):
         if to_typ[0] != 'f' and from_typ[0] != 'f':
             from_ityp = 'i' + from_typ[1:]
             to_ityp = 'i' + to_typ[1:]
-            return '''nsimd_vsx_v{from_typ} x0, x1;
-                      nsimd_vsx_v{from_ityp} xi0, xi1;
+            return '''nsimd_{simd_ext}_v{from_typ} x0, x1;
+                      nsimd_{simd_ext}_v{from_ityp} xi0, xi1;
                       memcpy(&xi0, &x0, sizeof(xi0));
                       memcpy(&xi1, &x1, sizeof(xi1));
-                      nsimd_vsx_v{to_ityp} ri = vec_pack(xi0, xi1);
-                      nsimd_vsx_v{to_typ} r;
+                      nsimd_{simd_ext}_v{to_ityp} ri = vec_pack(xi0, xi1);
+                      nsimd_{simd_ext}_v{to_typ} r;
                       memcpy(&r, &ri, sizeof(r));
                       return r;'''.\
                    format(from_ityp=from_ityp, to_ityp=to_ityp, **fmtspec)
@@ -285,7 +284,7 @@ def upcvt1(simd_ext, from_typ, to_typ):
         to_nbits = int(to_typ[1:])
         assert 2 * from_nbits == to_nbits
         if to_typ == 'f64':
-            return '''nsimd_vsx_v{to_typ}x2 r;
+            return '''nsimd_{simd_ext}_v{to_typ}x2 r;
                       r.v0 = vec_doublel({in0});
                       r.v1 = vec_doubleh({in0});
                       return r;'''.format(**fmtspec)
@@ -296,13 +295,13 @@ def upcvt1(simd_ext, from_typ, to_typ):
         if to_typ[0] != 'f' and from_typ[0] != 'f':
             from_ityp = 'i' + from_typ[1:]
             to_ityp = 'i' + to_typ[1:]
-            return '''nsimd_vsx_v{from_typ} x;
-                      nsimd_vsx_v{from_ityp} xi;
+            return '''nsimd_{simd_ext}_v{from_typ} x;
+                      nsimd_{simd_ext}_v{from_ityp} xi;
                       memcpy(&xi, &x, sizeof(xi));
-                      nsimd_vsx_v{to_ityp}x2 ri;
+                      nsimd_{simd_ext}_v{to_ityp}x2 ri;
                       ri.v0 = vec_unpackl(xi);
                       ri.v1 = vec_unpackh(xi);
-                      nsimd_vsx_v{to_typ}x2 r;
+                      nsimd_{simd_ext}_v{to_typ}x2 r;
                       memcpy(&r, &ri, sizeof(r));
                       return r;'''.\
                    format(from_ityp=from_ityp, to_ityp=to_ityp, **fmtspec)
