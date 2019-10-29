@@ -202,9 +202,12 @@ def len0(simd_ext, typ):
 
 def madd3(op, simd_ext, typ):
     if simd_ext in vmx:
-        if typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
         if typ[0] == 'f':
+            if typ == 'f16':
+                return '''nsimd_{simd_ext}_v{typ} r;
+                          r.v[0] = vec_{op}({in0}.v[0], {in1}.v[0], {in2}.v[0]);
+                          r.v[1] = vec_{op}({in0}.v[1], {in1}.v[1], {in2}.v[1]);
+                          return r;'''.format(op=op, **fmtspec)
             return 'return vec_{op}({in0}, {in1}, {in2});'.\
                 format(op=op, **fmtspec)
         if op == 'madd':
@@ -237,7 +240,10 @@ def not1(simd_ext, typ, logical=''):
 def rec1(simd_ext, typ):
     if simd_ext in vmx:
         if typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
+            return '''nsimd_{simd_ext}_v{typ} r;
+                      r.v[0] = vec_div(vec_splats((f32)1), {in0}.v[0]);
+                      r.v[1] = vec_div(vec_splats((f32)1), {in0}.v[1]);
+                      return r;'''.format(**fmtspec)
         return 'return vec_div(vec_splats(({typ})1), {in0});'.format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
@@ -275,7 +281,10 @@ def round1(op, simd_ext, typ):
             # rounding for integers is trivial
             return 'return {in0};'.format(**fmtspec)
         if typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
+            return '''nsimd_{simd_ext}_v{typ} r;
+                      r.v[0] = vec_{op}({in0}.v[0]);
+                      r.v[1] = vec_{op}({in0}.v[1]);
+                      return r;'''.format(op=op, **fmtspec)
         return 'return vec_{op}({in0});'.format(op=op, **fmtspec)
     raise ValueError('Unknown SIMD extension "{}";'.format(simd_ext))
 
@@ -337,7 +346,14 @@ def upcvt1(simd_ext, from_typ, to_typ):
 def op1(op, simd_ext, typ, logical=''):
     if simd_ext in vmx:
         if op == 'neg' and typ[0] == 'u':
-            return common.NOT_IMPLEMENTED # undefined
+            nbits = typ[1:]
+            return '''nsimd_{simd_ext}_vu{nbits} x = {in0};
+                      nsimd_{simd_ext}_vi{nbits} xi;
+                      memcpy(&xi, &x, sizeof(xi));
+                      nsimd_{simd_ext}_vi{nbits} ri = vec_neg(xi);
+                      nsimd_{simd_ext}_vu{nbits} r;
+                      memcpy(&r, &ri, sizeof(r));
+                      return r;'''.format(nbits=nbits, **fmtspec)
         if op == 'abs' and typ[0] == 'u':
             return 'return {in0};'.format(**fmtspec)
         if typ == 'f16':
@@ -390,13 +406,15 @@ def red1(op, simd_ext, typ):
             else:
                 args = ['{{in0}}[{}]'.format(i) for i in range(0, nelts)]
             if op == 'nbtrue':
-                args = ['!!{}'.format(arg) for arg in args]
+                args = ['(int){}'.format(arg) for arg in args]
             while len(args) > 1:
                 args = ['({} + {})'.format(args[i], args[i+1])
                         for i in range(0, len(args), 2)]
             r = args[0]
             if op == 'addv' and typ == 'f16':
                 r = 'nsimd_f32_to_f16({})'.format(r)
+            if op == 'nbtrue':
+                r = '-{}'.format(r)
             return 'return {};'.format(r).format(**fmtspec)
         if op in ['all', 'any']:
             cop = '&' if op == 'all' else '|'
@@ -419,7 +437,16 @@ def red1(op, simd_ext, typ):
 def load(simd_ext, from_typ):
     if simd_ext in vmx:
         if from_typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
+            nbits = int(from_typ[1:])
+            nelts = 128 // nbits
+            nelts2 = nelts // 2
+            stmts = ['nsimd_{simd_ext}_v{from_typ} r;']
+            stmts.extend(['r.v[{}][{}] = '\
+                              'nsimd_u16_to_f32(((const u16*){{in0}})[{}]);'.\
+                          format(i // nelts2, i % nelts2, i)
+                          for i in range(0, nelts)])
+            stmts.append('return r;')
+            return '\n'.join(stmts).format(**fmtspec)
         return 'return *(const nsimd_{simd_ext}_v{from_typ}*){in0};'.\
                format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
@@ -427,40 +454,49 @@ def load(simd_ext, from_typ):
 def store(simd_ext, from_typ):
     if simd_ext in vmx:
         if from_typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
+            nbits = int(from_typ[1:])
+            nelts = 128 // nbits
+            nelts2 = nelts // 2
+            stmts = ['((u16*){{in0}})[{}] = '\
+                         'nsimd_f32_to_u16({{in1}}.v[{}][{}]);'.\
+                     format(i, i // nelts2, i % nelts2)
+                     for i in range(0, nelts)]
+            return '\n'.join(stmts).format(**fmtspec)
         return '*(nsimd_{simd_ext}_v{from_typ}*){in0} = {in1};'.\
                format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def loadl(simd_ext, from_typ):
     if simd_ext in vmx:
-        ityp = 'i' + from_typ[1:]
-        ptr_typ = 'const nsimd_{simd_ext}_v{ityp}*'.format(ityp=ityp, **fmtspec)
         if from_typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
-        return 'return vec_cmpne(*({ptr_typ}){in0}, vec_splats(({ityp})0));'.\
-               format(ptr_typ=ptr_typ, ityp=ityp, **fmtspec);
+            nbits = int(from_typ[1:])
+            nelts = 128 // nbits
+            nelts2 = nelts // 2
+            return '''nsimd_{simd_ext}_vu16 x =
+                          *(const nsimd_{simd_ext}_vu16*){in0};
+                      nsimd_{simd_ext}_vi16 xi;
+                      memcpy(&xi, &x, sizeof(xi));
+                      nsimd_{simd_ext}_vl{from_typ} r;
+                      r.v[0] = vec_cmpne(vec_unpackl(xi), vec_splats((i32)0));
+                      r.v[1] = vec_cmpne(vec_unpackh(xi), vec_splats((i32)0));
+                      return r;'''.format(**fmtspec)
+        return 'return vec_cmpne(*(const nsimd_{simd_ext}_v{from_typ}*){in0}, '\
+                                'vec_splats(({from_typ})0));'.format(**fmtspec);
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def storel(simd_ext, from_typ):
     if simd_ext in vmx:
-        ityp = 'i' + from_typ[1:]
-        ptr_typ = 'nsimd_{simd_ext}_v{ityp}*'.format(ityp=ityp, **fmtspec)
         if from_typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
-        if from_typ[0] == 'f':
-            return '''nsimd_{simd_ext}_v{from_typ} one =
-                          vec_splats(({from_typ})1);
-                      nsimd_{simd_ext}_vl{from_typ} onel;
-                      memcpy(&onel, &one, sizeof(onel));
-                      *(nsimd_{simd_ext}_vl{from_typ}*){in0} =
-                          vec_and(onel, {in1});'''.format(**fmtspec)
-        return '''nsimd_{simd_ext}_vl{from_typ} x = {in1};
-                  nsimd_{simd_ext}_v{ityp} xi;
-                  memcpy(&xi, &x, sizeof(xi));
-                  *({ptr_typ}){in0} = -xi;'''.\
-               format(ityp=ityp, ptr_typ=ptr_typ, **fmtspec)
-        return '*({ptr_typ}){in0} = ~{in1};'.format(ptr_typ=ptr_typ, **fmtspec)
+            return '''nsimd_{simd_ext}_vu16 oneu =
+                          vec_splats(nsimd_f32_to_u16(1));
+                      nsimd_{simd_ext}_vlu16 x =
+                          vec_pack({in1}.v[0], {in1}.v[1]);
+                      *(nsimd_{simd_ext}_vu16*){in0} = vec_and(oneu, x);'''.\
+                   format(**fmtspec)
+        return '''nsimd_{simd_ext}_v{from_typ} one =
+                      vec_splats(({from_typ})1);
+                  *(nsimd_{simd_ext}_v{from_typ}*){in0} =
+                      vec_and(one, {in1});'''.format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 # -----------------------------------------------------------------------------
@@ -504,8 +540,8 @@ def get_impl(func, simd_ext, from_typ, to_typ):
         'floor': lambda: round1('floor', simd_ext, from_typ),
         'fma': lambda: madd3('madd', simd_ext, from_typ),
         'fms': lambda: madd3('msub', simd_ext, from_typ),
-        'fnma': lambda: madd3('nmadd', simd_ext, from_typ),
-        'fnms': lambda: madd3('nmsub', simd_ext, from_typ),
+        'fnma': lambda: madd3('nmsub', simd_ext, from_typ),
+        'fnms': lambda: madd3('nmadd', simd_ext, from_typ),
         'ge': lambda: op2('cmpge', simd_ext, from_typ, 'l'),
         'gt': lambda: op2('cmpgt', simd_ext, from_typ, 'l'),
         'if_else1': lambda: if_else3(simd_ext, from_typ),
@@ -523,7 +559,7 @@ def get_impl(func, simd_ext, from_typ, to_typ):
         'orl': lambda: op2('or', simd_ext, from_typ, 'l'),
         'rec': lambda: rec1(simd_ext, from_typ),
         'rec11': lambda: op1('re', simd_ext, from_typ),
-        'round': lambda: round1('round', simd_ext, from_typ),
+        'round_to_even': lambda: round1('round', simd_ext, from_typ),
         'rsqrt11': lambda: op1('rsqrte', simd_ext, from_typ),
         'set1': lambda: set1(simd_ext, from_typ),
         'shl': lambda: shift2('sl', simd_ext, from_typ),
