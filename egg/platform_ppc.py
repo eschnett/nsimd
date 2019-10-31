@@ -208,8 +208,8 @@ def madd3(op, simd_ext, typ):
                           r.v[0] = vec_{op}({in0}.v[0], {in1}.v[0], {in2}.v[0]);
                           r.v[1] = vec_{op}({in0}.v[1], {in1}.v[1], {in2}.v[1]);
                           return r;'''.format(op=op, **fmtspec)
-            # return 'return (vec_{op}({in0}, {in1}, {in2}));'.\
-            #        format(op=op, **fmtspec)
+            return 'return (vec_{op}({in0}, {in1}, {in2}));'.\
+                   format(op=op, **fmtspec)
         if op == 'madd':
             return 'return vec_add(vec_mul({in0}, {in1}), {in2});'.\
                 format(**fmtspec)
@@ -448,14 +448,12 @@ def load(simd_ext, from_typ):
             nelts = 128 // nbits
             nelts2 = nelts // 2
             stmts = ['nsimd_{simd_ext}_v{from_typ} r;']
-            stmts.extend(['r.v[{}][{}] = '\
-                              'nsimd_u16_to_f32(((const u16*){{in0}})[{}]);'.\
-                          format(i // nelts2, i % nelts2, i)
-                          for i in range(0, nelts)])
-            stmts.append('return r;')
+            stmts += ['r.v[{vi}][{iv}] = nsimd_f16_to_f32({in0}[{i}]);'.\
+                      format(i=i, vi=i // nelts2, iv=i % nelts2, **fmtspec)
+                      for i in range(0, nelts)])
+            stmts += ['return r;']
             return '\n'.join(stmts).format(**fmtspec)
-        return 'return *(const nsimd_{simd_ext}_v{from_typ}*){in0};'.\
-               format(**fmtspec)
+        return 'return vec_xl(0, {in0});'.format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def store(simd_ext, from_typ):
@@ -464,13 +462,11 @@ def store(simd_ext, from_typ):
             nbits = int(from_typ[1:])
             nelts = 128 // nbits
             nelts2 = nelts // 2
-            stmts = ['((u16*){{in0}})[{}] = '\
-                         'nsimd_f32_to_u16({{in1}}.v[{}][{}]);'.\
-                     format(i, i // nelts2, i % nelts2)
+            stmts = ['{in0}[{i}] = nsimd_f32_to_f16({in1}.v[{vi}][{iv}]);'.\
+                     format(i=i, vi=i // nelts2, iv=i % nelts2, **fmtspec)
                      for i in range(0, nelts)]
             return '\n'.join(stmts).format(**fmtspec)
-        return '*(nsimd_{simd_ext}_v{from_typ}*){in0} = {in1};'.\
-               format(**fmtspec)
+        return 'vec_xst({in1}, 0, {in0});'.format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def loadl(simd_ext, from_typ):
