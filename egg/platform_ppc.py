@@ -132,14 +132,21 @@ def cvt1(simd_ext, from_typ, to_typ):
                       memcpy(&r, &x, sizeof(r));
                       return r;'''.format(**fmtspec)
         # everything below converts between int and float
+        if from_typ == 'f16':
+            return '''return nsimd_{simd_ext}_f32_to_{to_typ}({in0}.v0,
+                                                              {in0}.v1);'''.\
+                   format(**fmtspec)
+        if to_typ == 'f16':
+            return '''nsimd_{simd_ext}_vf32x2 x =
+                        nsimd_{simd_ext}_{from_typ}_to_f32({in0});
+                      nsimd_{simd_ext}_v{to_typ} r = {{x.v0, x.v1}};
+                      return r;'''.format(**fmtspec)
         if to_typ == 'f64':
             # return 'return vec_ctd({in0}, 0);'.format(**fmtspec)
             return 'return vec_double({in0});'.format(**fmtspec)
         if to_typ == 'f32':
             # return 'return vec_ctf({in0}, 0);'.format(**fmtspec)
             return 'return vec_float({in0});'.format(**fmtspec)
-        if to_typ == 'f16':
-            return common.NOT_IMPLEMENTED # TODO
         if to_typ == 'i64':
             # return 'return vec_ctsl({in0}, 0);'.format(**fmtspec)
             return common.NOT_IMPLEMENTED # TODO
