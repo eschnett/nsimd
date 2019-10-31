@@ -287,7 +287,9 @@ def get_content(op, typ, lang):
             code = ['vin{}[i] = nsimd_f32_to_f16({});'. \
                     format(i, rand) for i in nargs]
         else:
-            code = ['vin{}[i] = ({})({});'.format(i, typ, rand) for i in nargs]
+            # TODO
+            # code = ['vin{}[i] = ({})({});'.format(i, typ, rand) for i in nargs]
+            code = ['vin{}[i] = ({})({});'.format(i, typ, i) for i in nargs]
         vin_rand = '\n'.join(code)
 
         # Make vout0_comp
@@ -346,12 +348,10 @@ def get_content(op, typ, lang):
             code += ['vstore{}u(&vout1[i], vc, {});'.format(logical, typ)]
 
             # TODO
-            code += ['printf("vin{i}=["); for (int j=0; j<step; ++j) printf("%g, ", (double)vin{i}[j]); printf("]\\n");'. \
+            code += ['printf("vin{i}[%d...]=[", i); for (int j=0; j<step; ++j) printf("%g, ", (double)vin{i}[i+j]); printf("]\\n");'. \
                      format(i=i) for i in nargs]
-            code += ['printf("vout0=["); for (int j=0; j<step; ++j) printf("%g, ", (double)vout0[j]); printf("]\\n");'. \
-                     format()]
-            code += ['printf("vout1=["); for (int j=0; j<step; ++j) printf("%g, ", (double)vout1[j]); printf("]\\n");'. \
-                     format()]
+            code += ['printf("vout{i}[%d...]=[", i); for (int j=0; j<step; ++j) printf("%g, ", (double)vout{i}[i+j]); printf("]\\n");'. \
+                     format(i=i) for i in range(0, 2)]
 
             vout1_comp = '\n'.join(code)
         if lang == 'cxx_base':
