@@ -559,8 +559,10 @@ def get_impl(func, simd_ext, from_typ, to_typ):
         'orl': lambda: op2('or', simd_ext, from_typ, 'l'),
         'rec': lambda: rec1(simd_ext, from_typ),
         'rec11': lambda: op1('re', simd_ext, from_typ),
+        'rec8': lambda: op1('re', simd_ext, from_typ),
         'round_to_even': lambda: round1('round', simd_ext, from_typ),
         'rsqrt11': lambda: op1('rsqrte', simd_ext, from_typ),
+        'rsqrt8': lambda: op1('rsqrte', simd_ext, from_typ),
         'set1': lambda: set1(simd_ext, from_typ),
         'shl': lambda: shift2('sl', simd_ext, from_typ),
         'shr': lambda: shift2('sr', simd_ext, from_typ), # logical shift

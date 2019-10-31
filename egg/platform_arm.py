@@ -772,9 +772,17 @@ def shl_shr(op, simd_ext, typ):
                              (i{typnbits})(-{in1})));'''.format(**fmtspec)
     else:
         armop = 'lsl' if op == 'shl' else 'lsr'
-        return '''return sv{armop}_{suf}_z({svtrue}, {in0},
-                           svdup_n_u{typnbits}((u{typnbits}){in1}));'''. \
-                           format(armop=armop, **fmtspec)
+        if op == 'shr' and typ in common.itypes:
+            return \
+            '''return svreinterpret_{suf}_{suf2}(sv{armop}_{suf2}_z({svtrue},
+                          svreinterpret_{suf2}_{suf}({in0}),
+                          svdup_n_u{typnbits}((u{typnbits}){in1})));'''. \
+                          format(suf2=common.bitfield_type[typ], armop=armop,
+                                 **fmtspec)
+        else:
+            return '''return sv{armop}_{suf}_z({svtrue}, {in0},
+                               svdup_n_u{typnbits}((u{typnbits}){in1}));'''. \
+                               format(armop=armop, **fmtspec)
 
 # -----------------------------------------------------------------------------
 # Set1
@@ -959,7 +967,7 @@ def round1(op, simd_ext, typ):
 ## FMA and FNMA
 
 def fmafnma3(op, simd_ext, typ):
-    if typ in common.ftypes and simd_ext in ['aarch64', 'sve']:
+    if typ in common.ftypes and simd_ext == 'aarch64':
         armop = {'fma': 'fma', 'fnma': 'fms'}
     else:
         armop = {'fma': 'mla', 'fnma': 'mls'}
@@ -1059,26 +1067,28 @@ def neg1(simd_ext, typ):
 def recs1(op, simd_ext, typ):
     cte = '({typ})1'.format(**fmtspec) if typ != 'f16' \
           else 'nsimd_f32_to_f16(1.0f)'
-    if op in ['rec11', 'rsqrt11']:
-        comment = \
-        '''/* According to http://infocenter.arm.com/help/         */
-           /* topic/com.arm.doc.faqs/ka14282.html, ARM reciprocals */
-           /* only works when input is in small interval. So we    */
-           /* fallback to full-precision recirprocals.             */'''
-    else:
-        comment = ''
     if op in ['rec', 'rec11']:
         return \
-        '''{comment}return nsimd_div_{simd_ext}_{typ}(
-                    nsimd_set1_{simd_ext}_{typ}({cte}), {in0});'''. \
-                    format(comment=comment, cte=cte, **fmtspec)
-    else:
+        '''return nsimd_div_{simd_ext}_{typ}(
+                      nsimd_set1_{simd_ext}_{typ}({cte}), {in0});'''. \
+                      format(cte=cte, **fmtspec)
+    elif op == 'rsqrt11':
         return \
-        '''{comment}
-           return nsimd_div_{simd_ext}_{typ}(
-               nsimd_set1_{simd_ext}_{typ}({cte}),
-               nsimd_sqrt_{simd_ext}_{typ}({in0}));'''. \
-               format(comment=comment, cte=cte, **fmtspec)
+        '''return nsimd_div_{simd_ext}_{typ}(
+                      nsimd_set1_{simd_ext}_{typ}({cte}),
+                      nsimd_sqrt_{simd_ext}_{typ}({in0}));'''. \
+                      format(cte=cte, **fmtspec)
+    elif op in ['rec8', 'rsqrt8']:
+        armop = 'recpe' if op == 'rec8' else 'rsqrte'
+        if simd_ext == 'sve':
+            return 'return sv{armop}_{suf}({in0});'. \
+            format(armop=armop, **fmtspec)
+        else:
+            ret = f16f64(simd_ext, typ, op, armop, 1)
+            if ret != '':
+                return ret
+            return 'return v{armop}q_{suf}({in0});'. \
+            format(armop=armop, **fmtspec)
 
 ## Rec11 and rsqrt11
 ## According to http://infocenter.arm.com/help/topic/com.arm.doc.faqs/ka14282.html
@@ -1726,10 +1736,9 @@ def to_mask1(simd_ext, typ):
         else:
             utyp = 'u{}'.format(fmtspec['typnbits'])
             return '''return svreinterpret_{suf}_{utyp}(svsel_{utyp}(
-                               svreinterpret_{utyp}_{suf}({in0}),
-                                 svdup_n_{utyp}(({utyp})-1),
-                                   svdup_n_{suf}(({typ})0)));'''. \
-                                   format(utyp=utyp, **fmtspec)
+                               {in0}, svdup_n_{utyp}(({utyp})-1),
+                               svdup_n_{utyp}(({utyp})0)));'''. \
+                               format(utyp=utyp, **fmtspec)
     else:
         return normal
 
@@ -1800,7 +1809,7 @@ def zip_unzip_half(func, simd_ext, typ):
         else:
             return 'return {s}v{op}{q}_{suf}({in0}, {in1});'. \
                 format(op=func, s = 's' if simd_ext == 'sve' else '',
-                       q = '' if simd_ext == 'sve' else 'q', **fmtspec)  
+                       q = '' if simd_ext == 'sve' else 'q', **fmtspec)
     elif simd_ext == 'neon128':
         armop = {'zip1': 'zipq', 'zip2': 'zipq', 'uzp1': 'uzpq',
                  'uzp2': 'uzpq'}
@@ -1842,7 +1851,7 @@ def zip_unzip_half(func, simd_ext, typ):
             ret.v0 = {in0}.v{i};
             ret.v1 = {in1}.v{i};
             return ret;'''. \
-                format(**fmtspec, i= '0' if func in ['zip1', 'uzp1'] else '1')  
+                format(**fmtspec, i= '0' if func in ['zip1', 'uzp1'] else '1')
         else :
             return '''\
             {neon_typ} res;
@@ -1902,7 +1911,7 @@ def zip_unzip(func, simd_ext, typ):
            '''.format(content, **fmtspec)
        else:
            return content
-                        
+
 # -----------------------------------------------------------------------------
 ## get_impl function
 
@@ -1990,7 +1999,9 @@ def get_impl(func, simd_ext, from_typ, to_typ):
         'reinterpretl': lambda: reinterpretl1(simd_ext, from_typ, to_typ),
         'cvt': lambda: convert1(simd_ext, from_typ, to_typ),
         'rec11': lambda: recs1("rec11", simd_ext, from_typ),
+        'rec8': lambda: recs1("rec8", simd_ext, from_typ),
         'rsqrt11': lambda: recs1("rsqrt11", simd_ext, from_typ),
+        'rsqrt8': lambda: recs1("rsqrt8", simd_ext, from_typ),
         'rec': lambda: recs1("rec", simd_ext, from_typ),
         'neg': lambda: neg1(simd_ext, from_typ),
         'nbtrue': lambda: nbtrue1(simd_ext, from_typ),

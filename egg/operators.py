@@ -200,7 +200,7 @@ class Operator(object, metaclass=MAddToOperators):
 
     # Defaults values (for tests)
     tests_mpfr = False
-    tests_ulps = False
+    tests_ulps = None
 
     @property
     def returns(self):
@@ -437,7 +437,7 @@ class Len(Operator):
 class Set1(Operator):
     signature = 'v set1 s'
     categories = [DocMisc]
-    desc = 'Set all the element in the vector to the given value.'
+    desc = 'Set all elements in the vector to the given value.'
 
 class Loadu(Operator):
     full_name = 'loadu'
@@ -586,7 +586,7 @@ class Storelu(Operator):
     categories = [DocLoadStore]
     domain = Domain('R')
     desc = 'Store SIMD vector of booleans into unaligned memory. True is ' + \
-           'store as 1 and False as 0.'
+           'stored as 1 and False as 0.'
 
 class Storela(Operator):
     full_name = 'storela'
@@ -595,7 +595,7 @@ class Storela(Operator):
     categories = [DocLoadStore]
     domain = Domain('R')
     desc = 'Store SIMD vector of booleans into aligned memory. True is ' + \
-           'store as 1 and False as 0.'
+           'stored as 1 and False as 0.'
 
 class Orb(Operator):
     full_name = 'bitwise or'
@@ -967,7 +967,15 @@ class Rec11(Operator):
     types = common.ftypes
     categories = [DocBasicArithmetic]
     domain = Domain('R\{0}')
-    tests_ulps = True
+    tests_ulps = 11
+
+class Rec8(Operator):
+    full_name = 'reciprocal with relative error at most 2^{-8}'
+    signature = 'v rec8 v'
+    types = common.ftypes
+    categories = [DocBasicArithmetic]
+    domain = Domain('R\{0}')
+    tests_ulps = 8
 
 class Sqrt(Operator):
     full_name = 'square root'
@@ -986,7 +994,15 @@ class Rsqrt11(Operator):
     types = common.ftypes
     domain = Domain('[0,Inf)')
     categories = [DocBasicArithmetic]
-    tests_ulps = True
+    tests_ulps = 11
+
+class Rsqrt8(Operator):
+    full_name = 'square root'
+    signature = 'v rsqrt8 v'
+    types = common.ftypes
+    domain = Domain('[0,Inf)')
+    categories = [DocBasicArithmetic]
+    tests_ulps = 8
 
 class Ziplo(Operator):
     full_name = 'ziplo'
@@ -995,7 +1011,7 @@ class Ziplo(Operator):
     domain = Domain('R')
     categories = [DocMisc]
     do_bench = False
-    
+
 class Ziphi(Operator):
     full_name = 'ziphi'
     signature = 'v ziphi v v'
@@ -1003,7 +1019,7 @@ class Ziphi(Operator):
     domain = Domain('R')
     categories = [DocMisc]
     do_bench = False
-    
+
 class Unziplo(Operator):
     full_name = 'unziplo'
     signature = 'v unziplo v v'
@@ -1011,7 +1027,7 @@ class Unziplo(Operator):
     domain = Domain('R')
     categories = [DocMisc]
     do_bench = False
-    
+
 class Unziphi(Operator):
     full_name = 'unziphi'
     signature = 'v unziphi v v'
@@ -1019,7 +1035,7 @@ class Unziphi(Operator):
     domain = Domain('R')
     categories = [DocMisc]
     do_bench = False
-    
+
 class ToMask(Operator):
     full_name = 'square root'
     signature = 'v to_mask l'
