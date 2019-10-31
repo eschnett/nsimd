@@ -200,7 +200,7 @@ def len0(simd_ext, typ):
         return 'return {nelts};'.format(nelts=nelts)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
-def madd3(op, simd_ext, typ):
+def madd3(op, simd_ext, typ, neg):
     if simd_ext in vmx:
         if typ[0] == 'f':
             if typ == 'f16':
@@ -208,22 +208,29 @@ def madd3(op, simd_ext, typ):
                           r.v[0] = vec_{op}({in0}.v[0], {in1}.v[0], {in2}.v[0]);
                           r.v[1] = vec_{op}({in0}.v[1], {in1}.v[1], {in2}.v[1]);
                           return r;'''.format(op=op, **fmtspec)
-            return 'return vec_{op}({in0}, {in1}, {in2});'.\
-                format(op=op, **fmtspec)
+            return 'return (vec_{op}({in0}, {in1}, {in2}));'.\
+                   format(op=op, **fmtspec)
         if op == 'madd':
             return 'return vec_add(vec_mul({in0}, {in1}), {in2});'.\
-                format(op=op, **fmtspec)
+                format(**fmtspec)
         if op == 'msub':
             return 'return vec_sub(vec_mul({in0}, {in1}), {in2});'.\
-                format(op=op, **fmtspec)
+                format(**fmtspec)
         if op == 'nmadd':
             if typ[0] == 'u':
-                return common.NOT_IMPLEMENTED # undefined
+                ityp = 'i' + typ[1:]
+                return '''nsimd_{simd_ext}_v{typ} r =
+                            vec_add(vec_mul({in0}, {in1}), {in2});
+                          nsimd_{simd_ext}_v{ityp} ri;
+                          memcpy(&ri, &r, sizeof(ri));
+                          ri = vec_neg(ri);
+                          memcpy(&r, &ri, sizeof(r));
+                          return r;'''.format(ityp=ityp, **fmtspec);
             return 'return vec_neg(vec_add(vec_mul({in0}, {in1}), {in2}));'.\
-                format(op=op, **fmtspec)
+                format(**fmtspec)
         if op == 'nmsub':
             return 'return vec_sub({in2}, vec_mul({in0}, {in1}));'.\
-                format(op=op, **fmtspec)
+                format(**fmtspec)
         assert False
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
@@ -473,7 +480,7 @@ def loadl(simd_ext, from_typ):
             nelts = 128 // nbits
             nelts2 = nelts // 2
             return '''nsimd_{simd_ext}_vu16 x =
-                          *(const nsimd_{simd_ext}_vu16*){in0};
+                        *(const nsimd_{simd_ext}_vu16*){in0};
                       nsimd_{simd_ext}_vi16 xi;
                       memcpy(&xi, &x, sizeof(xi));
                       nsimd_{simd_ext}_vl{from_typ} r;
@@ -488,15 +495,15 @@ def storel(simd_ext, from_typ):
     if simd_ext in vmx:
         if from_typ == 'f16':
             return '''nsimd_{simd_ext}_vu16 oneu =
-                          vec_splats(nsimd_f32_to_u16(1));
+                        vec_splats(nsimd_f32_to_u16(1));
                       nsimd_{simd_ext}_vlu16 x =
-                          vec_pack({in1}.v[0], {in1}.v[1]);
+                        vec_pack({in1}.v[0], {in1}.v[1]);
                       *(nsimd_{simd_ext}_vu16*){in0} = vec_and(oneu, x);'''.\
                    format(**fmtspec)
         return '''nsimd_{simd_ext}_v{from_typ} one =
-                      vec_splats(({from_typ})1);
+                    vec_splats(({from_typ})1);
                   *(nsimd_{simd_ext}_v{from_typ}*){in0} =
-                      vec_and(one, {in1});'''.format(**fmtspec)
+                    vec_and(one, {in1});'''.format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 # -----------------------------------------------------------------------------
