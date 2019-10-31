@@ -450,7 +450,7 @@ def load(simd_ext, from_typ):
             stmts = ['nsimd_{simd_ext}_v{from_typ} r;']
             stmts += ['r.v[{vi}][{iv}] = nsimd_f16_to_f32({in0}[{i}]);'.\
                       format(i=i, vi=i // nelts2, iv=i % nelts2, **fmtspec)
-                      for i in range(0, nelts)])
+                      for i in range(0, nelts)]
             stmts += ['return r;']
             return '\n'.join(stmts).format(**fmtspec)
         return 'return vec_xl(0, {in0});'.format(**fmtspec)
