@@ -344,6 +344,15 @@ def get_content(op, typ, lang):
                      format(i, logical, i, typ) for i in nargs]
             code += ['vc = v{}({}, {});'.format(op.name, args, typ)]
             code += ['vstore{}u(&vout1[i], vc, {});'.format(logical, typ)]
+
+            # TODO
+            code += ['printf("vin{i}="); for (int j=0; j<len; ++j) printf("%g,", (double)vin{i}[j]); printf("]\n");'. \
+                     format(i=i) for i in nargs]
+            code += ['printf("vout0="); for (int j=0; j<len; ++j) printf("%g,", (double)vout0[j]); printf("]\n");'. \
+                     format()]
+            code += ['printf("vout1="); for (int j=0; j<len; ++j) printf("%g,", (double)vout1[j]); printf("]\n");'. \
+                     format()]
+
             vout1_comp = '\n'.join(code)
         if lang == 'cxx_base':
             code = ['vec{}({}) {}, vc;'.format(logical, typ, args)]
