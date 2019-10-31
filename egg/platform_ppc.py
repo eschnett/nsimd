@@ -453,11 +453,8 @@ def load(simd_ext, from_typ):
                       for i in range(0, nelts)]
             stmts += ['return r;']
             return '\n'.join(stmts).format(**fmtspec)
-        # Only for VSX?
-        # return 'return vec_xl(0, {in0});'.format(**fmtspec)
-        return '''nsimd_{simd_ext}_v{from_typ} r;
-                  memcpy(&r, {in0}, sizeof(r));
-                  return r;'''.format(**fmtspec)
+        return 'return *(const nsimd_{simd_ext}_v{from_typ}*){in0};'.\
+               format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def store(simd_ext, from_typ):
@@ -470,9 +467,8 @@ def store(simd_ext, from_typ):
                      format(i=i, vi=i // nelts2, iv=i % nelts2, **fmtspec)
                      for i in range(0, nelts)]
             return '\n'.join(stmts).format(**fmtspec)
-        # Only for VSX?
-        # return 'vec_xst({in1}, 0, {in0});'.format(**fmtspec)
-        return 'memcpy({in0}, &{in1}, sizeof({in1}));'.format(**fmtspec)
+        return '*(nsimd_{simd_ext}_v{from_typ}*){in0} = {in1};'.\
+               format(**fmtspec)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
 def loadl(simd_ext, from_typ):
