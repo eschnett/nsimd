@@ -208,8 +208,8 @@ def madd3(op, simd_ext, typ):
                           r.v[0] = vec_{op}({in0}.v[0], {in1}.v[0], {in2}.v[0]);
                           r.v[1] = vec_{op}({in0}.v[1], {in1}.v[1], {in2}.v[1]);
                           return r;'''.format(op=op, **fmtspec)
-            return 'return (vec_{op}({in0}, {in1}, {in2}));'.\
-                   format(op=op, **fmtspec)
+            # return 'return (vec_{op}({in0}, {in1}, {in2}));'.\
+            #        format(op=op, **fmtspec)
         if op == 'madd':
             return 'return vec_add(vec_mul({in0}, {in1}), {in2});'.\
                 format(**fmtspec)
