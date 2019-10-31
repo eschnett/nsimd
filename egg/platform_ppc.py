@@ -200,7 +200,7 @@ def len0(simd_ext, typ):
         return 'return {nelts};'.format(nelts=nelts)
     raise ValueError('Unknown SIMD extension "{}"'.format(simd_ext))
 
-def madd3(op, simd_ext, typ, neg):
+def madd3(op, simd_ext, typ):
     if simd_ext in vmx:
         if typ[0] == 'f':
             if typ == 'f16':
